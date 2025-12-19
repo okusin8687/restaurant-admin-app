@@ -77,32 +77,32 @@ export default function PurchaseForm() {
   // --- 保存（新規作成 または 更新）処理 ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // デバッグ用：送信直前の値をコンソールで確認
+  console.log("送信直前のformData:", formData);
 
     if (editingId) {
       // 【Update】既存データの修正
       const { error } = await supabase
         .from('purchase_logs')
-        .insert({
-     purchase_date: formData.date, // ここを 'date' にしていたのが原因
-      vendor: formData.vendor,
-      item_name: formData.itemName, // ここを 'itemName' にしていたのが原因
-      price: formData.price,
-      quantity: formData.quantity,
-      unit: formData.unit
-})
+        .insert([ // 必ず配列 [ ] で囲む
+      {
+        purchase_date: formData.date, // formData.date (定義) -> purchase_date (DB)
+        vendor: formData.vendor,
+        item_name: formData.itemName, // formData.itemName (定義) -> item_name (DB)
+        price: Number(formData.price),    // 数値型に強制変換
+        quantity: Number(formData.quantity), // 数値型に強制変換
+        unit: formData.unit
+      }
+    ])
         .eq('id', editingId); // C言語でいうところの「ポインタ指定」に近い
 
-      if (error) alert('更新エラー: ' + error.message);
-      else {
-        alert('データを更新しました');
-        setEditingId(null); // 編集モード終了
-      }
-    } else {
-      // 【Create】新規登録
-      const { error } = await supabase.from('purchase_logs').insert([formData]);
-      if (error) alert('登録エラー: ' + error.message);
-      else alert('保存しました');
-    }
+      if (error) {
+    console.error("Supabaseエラー詳細:", error);
+    alert('登録エラー: ' + error.message);
+  } else {
+    alert('登録に成功しました！');
+    // 登録後の処理...
+  }
 
     setFormData({ ...formData, vendor: '', itemName: '', price: 0, quantity: 0 });
     fetchItems();
