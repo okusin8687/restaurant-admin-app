@@ -82,14 +82,16 @@ export default function PurchaseForm() {
       // 【Update】既存データの修正
       const { error } = await supabase
         .from('purchase_logs')
-        .update({
-          purchase_date: formData.date,
-          vendor: formData.vendor,
-          item_name: formData.itemName,
-          price: formData.price,
-          quantity: formData.quantity,
-          unit: formData.unit
-        })
+        .insert([
+    {
+      // 左側をDBのカラム名（purchase_date）に、右側をフォームの値に合わせる
+      purchase_date: formData.date, 
+      vendor: formData.vendor,
+      item_name: formData.itemName, // ここも item_name ですか？ itemName ですか？
+      price: formData.price,
+      quantity: formData.quantity,
+      unit: formData.unit
+    })
         .eq('id', editingId); // C言語でいうところの「ポインタ指定」に近い
 
       if (error) alert('更新エラー: ' + error.message);
