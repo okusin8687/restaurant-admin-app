@@ -161,21 +161,23 @@ export default function PurchaseForm() {
 
     setIsScanning(true);
     try {
-      // 1. 画像をBase64に変換（AIに送るための形式）
+
+      // 2. Gemini APIの準備
+      // 1. まず genAI を作成      // 
+      const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
+      if (!apiKey) throw new Error("APIキーが設定されていません");
+      
+      const genAI = new GoogleGenerativeAI(apiKey);
+
+      // 2. モデル取得の際、オブジェクト形式ではなく「文字列のみ」を渡してみる
+      // // これで内部的なパースエラーを回避できるケースがあります
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+
+       // 1. 画像をBase64に変換（AIに送るための形式）
       const base64Data = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(file);
-      });
-
-      // 2. Gemini APIの準備
-      // 1. まず genAI を作成      // 
-      const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
-
-      // 2. モデル取得の際、オブジェクト形式ではなく「文字列のみ」を渡してみる
-      // // これで内部的なパースエラーを回避できるケースがあります
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash-latest" 
       });
 
       // --- AIへの命令（プロンプト）を現場仕様に強化 ---
