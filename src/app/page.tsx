@@ -187,6 +187,7 @@ export default function PurchaseForm() {
 
       // 4. 結果を解析してフォームに反映
       const responseText = result.response.text();
+      console.log("AIの生回答:", responseText); // デバッグ用にコンソールへ出力
       // AIが余計な装飾（```jsonなど）を付けてくる場合を考慮してトリミング
       const jsonText = responseText.replace(/```json|```/g, "").trim();
       const data = JSON.parse(jsonText);
@@ -195,10 +196,29 @@ export default function PurchaseForm() {
         setUnits(prev => [...prev, detectedUnit]);
       }
 
+      // 正規表現で { ... } の部分だけを抽出（余計な説明文を無視する）
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("JSONが見つかりませんでした");
+
+      let data;
+      try {
+        data = JSON.parse(jsonMatch[0]);
+      } catch (e) {
+        // AIが末尾にカンマを忘れる等のミスを微修正（気休めですが有効）
+        const fixedJson = jsonMatch[0].replace(/,\s*\}/g, '}');
+        data = JSON.parse(fixedJson);
+      }
+
+      // --- 現場の用語（荷姿など）をシステム側にマッピング ---
+      const detectedUnit = data.unit || "BL";
+      if (!units.includes(detectedUnit)) {
+        setUnits(prev => [...prev, detectedUnit]);
+      }
+
       setFormData({
-        date: data.date || formData.date,
-        vendor: data.vendor || "",
-        itemName: data.itemName || "",
+        date: data.date || new Date().toISOString().split('T')[0],
+        vendor: data.vendor || "不明な仕入れ先", // AIが見つけられない時の回避
+        itemName: data.itemName || "不明な商品名",
         price: Number(data.price) || 0,
         quantity: Number(data.quantity) || 1,
         unit: detectedUnit
