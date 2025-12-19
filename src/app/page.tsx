@@ -76,37 +76,52 @@ export default function PurchaseForm() {
 
   // --- 保存（新規作成 または 更新）処理 ---
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // デバッグ用：送信直前の値をコンソールで確認
+  e.preventDefault();
   console.log("送信直前のformData:", formData);
 
-    if (editingId) {
-      // 【Update】既存データの修正
-      const { error } = await supabase
-        .from('purchase_logs')
-        .insert([ // 必ず配列 [ ] で囲む
-      {
-        purchase_date: formData.date, // formData.date (定義) -> purchase_date (DB)
-        vendor: formData.vendor,
-        item_name: formData.itemName, // formData.itemName (定義) -> item_name (DB)
-        price: Number(formData.price),    // 数値型に強制変換
-        quantity: Number(formData.quantity), // 数値型に強制変換
-        unit: formData.unit
-      }
-    ])
-        .eq('id', editingId); // C言語でいうところの「ポインタ指定」に近い
+  let error;
 
-      if (error) {
-    console.error("Supabaseエラー詳細:", error);
-    alert('登録エラー: ' + error.message);
+  if (editingId) {
+    // 【Update】既存データの修正
+    const { error: updateError } = await supabase
+      .from('purchase_logs')
+      .update({ // Updateなので .update() を使う
+        purchase_date: formData.date,
+        vendor: formData.vendor,
+        item_name: formData.itemName,
+        price: Number(formData.price),
+        quantity: Number(formData.quantity),
+        unit: formData.unit
+      })
+      .eq('id', editingId);
+    error = updateError;
   } else {
-    alert('登録に成功しました！');
-    // 登録後の処理...
+    // 【Insert】新規データの登録
+    const { error: insertError } = await supabase
+      .from('purchase_logs')
+      .insert([
+        {
+          purchase_date: formData.date,
+          vendor: formData.vendor,
+          item_name: formData.itemName,
+          price: Number(formData.price),
+          quantity: Number(formData.quantity),
+          unit: formData.unit
+        }
+      ]);
+    error = insertError;
   }
 
+  if (error) {
+    console.error("Supabaseエラー詳細:", error);
+    alert('エラーが発生しました: ' + error.message);
+  } else {
+    alert(editingId ? '更新に成功しました！' : '登録に成功しました！');
     setFormData({ ...formData, vendor: '', itemName: '', price: 0, quantity: 0 });
+    setEditingId(null); // 編集モードを解除
     fetchItems();
-  };
+  }
+};
 
   // --- 編集ボタンを押した時の処理 ---
   const startEdit = (item: any) => {
