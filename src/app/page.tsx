@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx'; // 【追加】Excelライブラリのインポー
 import { useRouter } from 'next/navigation';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function PurchaseForm() {
+  const [isScanning, setIsScanning] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -134,9 +137,95 @@ export default function PurchaseForm() {
     }
   };
 
+  // --- AI解析ロジック ---
+  const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsScanning(true);
+    try {
+      // 1. 画像をBase64に変換（AIに送るための形式）
+      const base64Data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      // 2. Gemini APIの準備
+      const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      // 3. AIへの命令（プロンプト）
+      const prompt = `
+        この納品書（または領収書）の画像から以下の情報を抽出し、純粋なJSON形式で返してください。
+        JSON以外の説明テキストは一切含めないでください。
+        {
+          "date": "YYYY-MM-DD形式",
+          "vendor": "メーカー・仕入れ先名",
+          "itemName": "最も主要な商品名1つ",
+          "price": 数値(単価),
+          "quantity": 数値(数量),
+          "unit": "BL, PK, C/S, KGの中から推測"
+        }
+      `;
+
+      const result = await model.generateContent([
+        prompt,
+        { inlineData: { data: base64Data.split(',')[1], mimeType: file.type } }
+      ]);
+
+      // 4. 結果を解析してフォームに反映
+      const responseText = result.response.text();
+      // AIが余計な装飾（```jsonなど）を付けてくる場合を考慮してトリミング
+      const jsonText = responseText.replace(/```json|```/g, "").trim();
+      const data = JSON.parse(jsonText);
+
+      setFormData({
+        date: data.date || formData.date,
+        vendor: data.vendor || "",
+        itemName: data.itemName || "",
+        price: Number(data.price) || 0,
+        quantity: Number(data.quantity) || 1,
+        unit: data.unit || "BL"
+      });
+      
+      alert("スキャンが完了しました！内容を確認してください。");
+    } catch (error) {
+      console.error(error);
+      alert("解析に失敗しました。手動で入力してください。");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="min-h-screen bg-gray-50 py-10 px-4">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        {/* スキャンボタン */}
+        <div className="flex justify-center">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isScanning}
+            className={`flex items-center gap-2 px-6 py-4 rounded-full font-bold text-white shadow-lg transition ${isScanning ? 'bg-gray-400' : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:scale-105 active:scale-95'}`}
+          >
+            <svg xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {isScanning ? "AI解析中..." : "納品書をスキャンして自動入力"}
+          </button>
+          
+          {/* カメラ起動用の隠しinput */}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment" // スマホで直接カメラを起動させる属性
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleScan}
+          />
+        </div>
         
         {/* 入力フォーム部分 */}
         <div className={`p-6 shadow-md rounded-xl border-2 transition ${editingId ? 'bg-orange-50 border-orange-200' : 'bg-white border-transparent'}`}>
@@ -149,28 +238,28 @@ export default function PurchaseForm() {
             )}
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-  {/* 上段：日付とメーカー（1:1の幅） */}
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">仕入れ日</label>
-      <input
-        type="date"
-        className="block w-full h-[42px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 border px-3"
-        value={formData.date}
-        onChange={(e) => setFormData({...formData, date: e.target.value})}
-        required
-      />
-    </div>
+            {/* 上段：日付とメーカー（1:1の幅） */}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">仕入れ日</label>
+            <input
+              type="date"
+              className="block w-full h-[42px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 border px-3"
+             value={formData.date}
+              onChange={(e) => setFormData({...formData, date: e.target.value})}
+              required
+            />
+        </div>
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">メーカー / 仕入れ先</label>
-      <input
-        type="text"
-        placeholder="例：〇〇水産"
-        className="block w-full h-[42px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 border px-3"
-        value={formData.vendor}
-        onChange={(e) => setFormData({...formData, vendor: e.target.value})}
-        required
-      />
+        <input
+         type="text"
+          placeholder="例：〇〇水産"
+         className="block w-full h-[42px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 border px-3"
+         value={formData.vendor}
+         onChange={(e) => setFormData({...formData, vendor: e.target.value})}
+         required
+         />
     </div>
   </div>
 
