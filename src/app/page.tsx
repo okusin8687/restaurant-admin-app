@@ -221,10 +221,13 @@ export default function PurchaseForm() {
         unit: detectedUnit
       });
       alert(`スキャン完了！新しい単位「${detectedUnit}」を認識しました。`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("解析エラーの詳細:", error);
-      // AIの生の回答をログに出すようにしておくと、どこがJSONとして壊れたか分かります
-      alert("解析に失敗しました。画像が不鮮明か、文字が読み取れなかった可能性があります。");
+      
+      // 【デバッグ用】エラーの正体を表示させる
+      // これで「JSONのパースミス」なのか「APIキーのミス」なのかが判明します
+      alert(`解析失敗エラー：\n${error.message}`);
+      
     } finally {
       setIsScanning(false);
     }
