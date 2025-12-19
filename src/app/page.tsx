@@ -191,10 +191,6 @@ export default function PurchaseForm() {
       // AIが余計な装飾（```jsonなど）を付けてくる場合を考慮してトリミング
       const jsonText = responseText.replace(/```json|```/g, "").trim();
       const data = JSON.parse(jsonText);
-      const detectedUnit = data.unit || "BL";
-      if (!units.includes(detectedUnit)) {
-        setUnits(prev => [...prev, detectedUnit]);
-      }
 
       // 正規表現で { ... } の部分だけを抽出（余計な説明文を無視する）
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
