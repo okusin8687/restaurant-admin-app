@@ -154,8 +154,14 @@ export default function PurchaseForm() {
       });
 
       // 2. Gemini APIの準備
+      // 1. まず genAI を作成      // 
       const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+      // 2. モデル取得の際、オブジェクト形式ではなく「文字列のみ」を渡してみる
+      // // これで内部的なパースエラーを回避できるケースがあります
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash" 
+      });
 
       // --- AIへの命令（プロンプト）を現場仕様に強化 ---
       const prompt = `
