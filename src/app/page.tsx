@@ -23,6 +23,7 @@ export default function PurchaseForm() {
     quantity: 0,
     unit: 'BL',
   });
+  const router = useRouter();
 
   const downloadExcel = () => {
     // 1. 保存されているデータ（items）をExcel用の形式に整理する
@@ -190,7 +191,6 @@ export default function PurchaseForm() {
       console.log("AIの生回答:", responseText); // デバッグ用にコンソールへ出力
       // AIが余計な装飾（```jsonなど）を付けてくる場合を考慮してトリミング
       const jsonText = responseText.replace(/```json|```/g, "").trim();
-      const data = JSON.parse(jsonText);
 
       // 正規表現で { ... } の部分だけを抽出（余計な説明文を無視する）
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
@@ -198,9 +198,10 @@ export default function PurchaseForm() {
 
       let data;
       try {
+        // 2. ここでは「const」を付けずに、上で作った「data」に代入するだけにする
         data = JSON.parse(jsonMatch[0]);
       } catch (e) {
-        // AIが末尾にカンマを忘れる等のミスを微修正（気休めですが有効）
+        // AIのJSONミスを修正して代入
         const fixedJson = jsonMatch[0].replace(/,\s*\}/g, '}');
         data = JSON.parse(fixedJson);
       }
