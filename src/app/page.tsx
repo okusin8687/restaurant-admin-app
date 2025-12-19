@@ -151,7 +151,7 @@ export default function PurchaseForm() {
     const modelName = "gemini-1.5-flash";
     console.log("Model Name (quoted):", `'${modelName}'`);
     console.log("--- DEBUG END ---");
-    
+
     const genAI = new GoogleGenerativeAI(apiKey.trim()); // trim()で念のため空白を消す
     const model = genAI.getGenerativeModel({ model: modelName.trim() });
 
@@ -175,7 +175,7 @@ export default function PurchaseForm() {
       // 2. モデル取得の際、オブジェクト形式ではなく「文字列のみ」を渡してみる
       // // これで内部的なパースエラーを回避できるケースがあります
       const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash" 
+        model: "gemini-1.5-flash-latest" 
       });
 
       // --- AIへの命令（プロンプト）を現場仕様に強化 ---
