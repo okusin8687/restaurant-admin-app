@@ -141,6 +141,21 @@ export default function PurchaseForm() {
 
   // --- AI解析ロジック ---
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
+
+
+    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
+    console.log("--- DEBUG START ---");
+    console.log("API Key length:", apiKey.length);
+    console.log("API Key (quoted):", `'${apiKey}'`); // 前後にスペースがないか確認
+    
+    const modelName = "gemini-1.5-flash";
+    console.log("Model Name (quoted):", `'${modelName}'`);
+    console.log("--- DEBUG END ---");
+    
+    const genAI = new GoogleGenerativeAI(apiKey.trim()); // trim()で念のため空白を消す
+    const model = genAI.getGenerativeModel({ model: modelName.trim() });
+
+
     const file = e.target.files?.[0];
     if (!file) return;
 
