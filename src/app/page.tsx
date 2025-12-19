@@ -161,24 +161,23 @@ export default function PurchaseForm() {
 
     setIsScanning(true);
     try {
-
+       // 1. 画像をBase64に変換（AIに送るための形式）
+      const base64Data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);   
+      
       // 2. Gemini APIの準備
       // 1. まず genAI を作成      // 
-      const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
-      if (!apiKey) throw new Error("APIキーが設定されていません");
+        const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
+        if (!apiKey) throw new Error("APIキーが設定されていません");
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
       
       const genAI = new GoogleGenerativeAI(apiKey);
 
       // 2. モデル取得の際、オブジェクト形式ではなく「文字列のみ」を渡してみる
       // // これで内部的なパースエラーを回避できるケースがあります
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
-
-       // 1. 画像をBase64に変換（AIに送るための形式）
-      const base64Data = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
 
       // --- AIへの命令（プロンプト）を現場仕様に強化 ---
       const prompt = `
@@ -204,13 +203,28 @@ export default function PurchaseForm() {
         }
       `;
 
-      const result = await model.generateContent([
-        prompt,
-        { inlineData: { data: base64Data.split(',')[1], mimeType: file.type } }
-      ]);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: file.type, data: base64Data.split(',')[1] } }
+            ]
+          }]
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`APIエラー: ${response.status} ${JSON.stringify(errorData)}`);
+      }
+      
+      const result = await response.json();
 
       // 4. 結果を解析してフォームに反映
-      const responseText = result.response.text();
+      const responseText = result.candidates[0].content.parts[0].text;
       console.log("AIの生回答:", responseText); // デバッグ用にコンソールへ出力
       // AIが余計な装飾（```jsonなど）を付けてくる場合を考慮してトリミング
       const jsonText = responseText.replace(/```json|```/g, "").trim();
@@ -235,6 +249,7 @@ export default function PurchaseForm() {
         setUnits(prev => [...prev, detectedUnit]);
       }
 
+
       setFormData({
         date: data.date || new Date().toISOString().split('T')[0],
         vendor: data.vendor || "不明な仕入れ先", // AIが見つけられない時の回避
@@ -244,7 +259,7 @@ export default function PurchaseForm() {
         unit: detectedUnit
       });
       alert(`スキャン完了！新しい単位「${detectedUnit}」を認識しました。`);
-    } catch (error: any) {
+    } }catch (error: any) {
       console.error("解析エラーの詳細:", error);
       
       // 【デバッグ用】エラーの正体を表示させる
