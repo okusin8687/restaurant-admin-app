@@ -11,9 +11,10 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export default function PurchaseForm() {
+  // --- 1. 単位リストをStateで管理 ---
+  const [units, setUnits] = useState(['BL', 'PK', 'C/S', 'KG']); 
   const [isScanning, setIsScanning] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     vendor: '',
@@ -157,15 +158,14 @@ export default function PurchaseForm() {
 
       // 3. AIへの命令（プロンプト）
       const prompt = `
-        この納品書（または領収書）の画像から以下の情報を抽出し、純粋なJSON形式で返してください。
-        JSON以外の説明テキストは一切含めないでください。
+        この納品書の画像から情報を抽出し、純粋なJSON形式で返してください。
         {
           "date": "YYYY-MM-DD形式",
-          "vendor": "メーカー・仕入れ先名",
-          "itemName": "最も主要な商品名1つ",
+          "vendor": "メーカー名",
+          "itemName": "商品名",
           "price": 数値(単価),
           "quantity": 数値(数量),
-          "unit": "BL, PK, C/S, KGの中から推測"
+          "unit": "画像に記載されている単位（例：本、束、個、ケースなど）"
         }
       `;
 
@@ -179,6 +179,10 @@ export default function PurchaseForm() {
       // AIが余計な装飾（```jsonなど）を付けてくる場合を考慮してトリミング
       const jsonText = responseText.replace(/```json|```/g, "").trim();
       const data = JSON.parse(jsonText);
+      const detectedUnit = data.unit || "BL";
+      if (!units.includes(detectedUnit)) {
+        setUnits(prev => [...prev, detectedUnit]);
+      }
 
       setFormData({
         date: data.date || formData.date,
@@ -186,9 +190,9 @@ export default function PurchaseForm() {
         itemName: data.itemName || "",
         price: Number(data.price) || 0,
         quantity: Number(data.quantity) || 1,
-        unit: data.unit || "BL"
+        unit: detectedUnit
       });
-      
+      alert(`スキャン完了！新しい単位「${detectedUnit}」を認識しました。`);
       alert("スキャンが完了しました！内容を確認してください。");
     } catch (error) {
       console.error(error);
@@ -310,17 +314,24 @@ export default function PurchaseForm() {
       />
     </div>
     <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1 text-center">単位</label>
-      <select
-        className="block w-full h-[42px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 border px-3 bg-white cursor-pointer"
-        value={formData.unit}
-        onChange={(e) => setFormData({...formData, unit: e.target.value})}
-      >
-        <option value="BL">BL</option>
-        <option value="PK">PK</option>
-        <option value="C/S">C/S</option>
-        <option value="KG">KG</option>
-      </select>
+      {/* 単位のセレクトボックス部分を修正 */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1 text-center">単位</label>
+        <select
+          className="block w-full h-[42px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 border px-3 bg-white cursor-pointer"
+          value={formData.unit}
+          onChange={(e) => {
+            // 手動入力で「その他」を選ばせる代わりに、直接入力できるようにするのは少し複雑なので
+            // まずはAIが追加したリストから選べるようにします
+            setFormData({...formData, unit: e.target.value})
+          }}
+        >
+          {/* --- 4. 単位リストから動的に生成 --- */}
+          {units.map((u) => (
+            <option key={u} value={u}>{u}</option>
+          ))}
+        </select>
+      </div>
     </div>
   </div>
 
