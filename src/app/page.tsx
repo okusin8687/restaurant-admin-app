@@ -141,68 +141,40 @@ export default function PurchaseForm() {
 
   // --- AI解析ロジック ---
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-
-
-    const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || "";
-    console.log("--- DEBUG START ---");
-    console.log("API Key length:", apiKey.length);
-    console.log("API Key (quoted):", `'${apiKey}'`); // 前後にスペースがないか確認
-    
-    const modelName = "gemini-1.5-flash";
-    console.log("Model Name (quoted):", `'${modelName}'`);
-    console.log("--- DEBUG END ---");
-
-    const genAI = new GoogleGenerativeAI(apiKey.trim()); // trim()で念のため空白を消す
-    const model = genAI.getGenerativeModel({ model: modelName.trim() });
-
-
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsScanning(true);
+    
     try {
-       // 1. 画像をBase64に変換（AIに送るための形式）
-      const base64Data = await new Promise<string>((resolve) => {
+      // 1. 画像をBase64に変換（Promiseをここで完結させる）
+      const base64Data = await new Promise<string>((resolve, reject) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);   
-      
-      // 2. Gemini APIの準備
-      // 1. まず genAI を作成      // 
-        const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
-        if (!apiKey) throw new Error("APIキーが設定されていません");
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-      
-      const genAI = new GoogleGenerativeAI(apiKey);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (e) => reject(e);
+        reader.readAsDataURL(file);
+      });
 
-      // 2. モデル取得の際、オブジェクト形式ではなく「文字列のみ」を渡してみる
-      // // これで内部的なパースエラーを回避できるケースがあります
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-8b" });
+      // 2. Gemini APIの準備（URL直接方式）
+      const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
+      if (!apiKey) throw new Error("APIキーが設定されていません。Vercelの設定を確認してください。");
+      
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-      // --- AIへの命令（プロンプト）を現場仕様に強化 ---
       const prompt = `
         この納品書（または領収書）の画像から情報を抽出し、純粋なJSON形式で返してください。
-        
-        【抽出のルール】
-        1. date: 伝票の日付を YYYY-MM-DD 形式で。
-        2. vendor: 発行元や販売元、または一番上に大きく書かれている会社名を「仕入れ先」として抽出。
-        3. itemName: 品名、商品名、内容などの欄から、最も主要な商品名1つを抽出。
-        4. price: 単価（金額ではなく、1つあたりの値段）。
-        5. quantity: 数量。
-        6. unit: 「荷姿」や「単位」の欄にある文字（例：BL, ケース, 本, 束など）。
-           ※もし画像に「荷姿」とあれば、その内容をそのまま抽出してください。
-
         JSON以外の説明テキストは一切含めないでください。
         {
           "date": "YYYY-MM-DD",
-          "vendor": "文字列",
-          "itemName": "文字列",
-          "price": 数値,
-          "quantity": 数値,
-          "unit": "文字列"
+          "vendor": "仕入れ先名",
+          "itemName": "商品名",
+          "price": 0,
+          "quantity": 1,
+          "unit": "単位"
         }
       `;
 
+      // 3. fetchで直接送信
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -222,50 +194,34 @@ export default function PurchaseForm() {
       }
       
       const result = await response.json();
-
-      // 4. 結果を解析してフォームに反映
       const responseText = result.candidates[0].content.parts[0].text;
-      console.log("AIの生回答:", responseText); // デバッグ用にコンソールへ出力
-      // AIが余計な装飾（```jsonなど）を付けてくる場合を考慮してトリミング
-      const jsonText = responseText.replace(/```json|```/g, "").trim();
-
-      // 正規表現で { ... } の部分だけを抽出（余計な説明文を無視する）
+      
+      // 4. JSON抽出と反映
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("JSONが見つかりませんでした");
+      if (!jsonMatch) throw new Error("AIの回答からJSONが見つかりませんでした");
 
-      let data;
-      try {
-        // 2. ここでは「const」を付けずに、上で作った「data」に代入するだけにする
-        data = JSON.parse(jsonMatch[0]);
-      } catch (e) {
-        // AIのJSONミスを修正して代入
-        const fixedJson = jsonMatch[0].replace(/,\s*\}/g, '}');
-        data = JSON.parse(fixedJson);
-      }
-
-      // --- 現場の用語（荷姿など）をシステム側にマッピング ---
+      const data = JSON.parse(jsonMatch[0]);
       const detectedUnit = data.unit || "BL";
+
+      // 単位の追加とフォーム反映
       if (!units.includes(detectedUnit)) {
         setUnits(prev => [...prev, detectedUnit]);
       }
 
-
       setFormData({
         date: data.date || new Date().toISOString().split('T')[0],
-        vendor: data.vendor || "不明な仕入れ先", // AIが見つけられない時の回避
+        vendor: data.vendor || "不明な仕入れ先",
         itemName: data.itemName || "不明な商品名",
         price: Number(data.price) || 0,
         quantity: Number(data.quantity) || 1,
         unit: detectedUnit
       });
-      alert(`スキャン完了！新しい単位「${detectedUnit}」を認識しました。`);
-    } }catch (error: any) {
+
+      alert(`スキャン完了！単位「${detectedUnit}」を認識しました。`);
+
+    } catch (error: any) {
       console.error("解析エラーの詳細:", error);
-      
-      // 【デバッグ用】エラーの正体を表示させる
-      // これで「JSONのパースミス」なのか「APIキーのミス」なのかが判明します
       alert(`解析失敗エラー：\n${error.message}`);
-      
     } finally {
       setIsScanning(false);
     }
