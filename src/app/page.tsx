@@ -156,16 +156,27 @@ export default function PurchaseForm() {
       const genAI = new GoogleGenerativeAI(process.env.NEXT_PUBLIC_GEMINI_API_KEY!);
       const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-      // 3. AIへの命令（プロンプト）
+      // --- AIへの命令（プロンプト）を現場仕様に強化 ---
       const prompt = `
-        この納品書の画像から情報を抽出し、純粋なJSON形式で返してください。
+        この納品書（または領収書）の画像から情報を抽出し、純粋なJSON形式で返してください。
+        
+        【抽出のルール】
+        1. date: 伝票の日付を YYYY-MM-DD 形式で。
+        2. vendor: 発行元や販売元、または一番上に大きく書かれている会社名を「仕入れ先」として抽出。
+        3. itemName: 品名、商品名、内容などの欄から、最も主要な商品名1つを抽出。
+        4. price: 単価（金額ではなく、1つあたりの値段）。
+        5. quantity: 数量。
+        6. unit: 「荷姿」や「単位」の欄にある文字（例：BL, ケース, 本, 束など）。
+           ※もし画像に「荷姿」とあれば、その内容をそのまま抽出してください。
+
+        JSON以外の説明テキストは一切含めないでください。
         {
-          "date": "YYYY-MM-DD形式",
-          "vendor": "メーカー名",
-          "itemName": "商品名",
-          "price": 数値(単価),
-          "quantity": 数値(数量),
-          "unit": "画像に記載されている単位（例：本、束、個、ケースなど）"
+          "date": "YYYY-MM-DD",
+          "vendor": "文字列",
+          "itemName": "文字列",
+          "price": 数値,
+          "quantity": 数値,
+          "unit": "文字列"
         }
       `;
 
@@ -193,10 +204,10 @@ export default function PurchaseForm() {
         unit: detectedUnit
       });
       alert(`スキャン完了！新しい単位「${detectedUnit}」を認識しました。`);
-      alert("スキャンが完了しました！内容を確認してください。");
     } catch (error) {
-      console.error(error);
-      alert("解析に失敗しました。手動で入力してください。");
+      console.error("解析エラーの詳細:", error);
+      // AIの生の回答をログに出すようにしておくと、どこがJSONとして壊れたか分かります
+      alert("解析に失敗しました。画像が不鮮明か、文字が読み取れなかった可能性があります。");
     } finally {
       setIsScanning(false);
     }
