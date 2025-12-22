@@ -397,6 +397,22 @@ const displayUnit = newItems[0]?.unit || "BL";
         </div>
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">メーカー / 仕入れ先</label>
+      {/* ★サジェストエリア：既存の existingVendors から5件表示 */}
+      <div className="flex gap-2 overflow-x-auto pb-2 mb-2 scrollbar-hide">
+       {existingVendors
+        .filter(v => v.includes(formData.vendor)) // 入力文字でフィルタ（任意）
+        .slice(0, 8) // 最大8件くらい
+        .map(v => (
+         <button
+            key={v}
+            type="button"
+           onClick={() => setFormData({ ...formData, vendor: v })}
+           className="shrink-0 px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-medium active:bg-blue-200"
+          >
+            {v}
+        </button>
+      ))}
+     </div>
         <input
          type="text"
           placeholder="例：〇〇水産"
@@ -408,18 +424,35 @@ const displayUnit = newItems[0]?.unit || "BL";
     </div>
   </div>
 
-  {/* 中段：商品名（1行まるごと使用） */}
-  <div>
-    <label className="block text-sm font-medium text-gray-700 mb-1">商品名</label>
-    <input
-      type="text"
-      placeholder="例：ノルウェー産サーモン"
-      className="block w-full h-[42px] rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 border px-3"
-      value={formData.itemName}
-      onChange={(e) => setFormData({...formData, itemName: e.target.value})}
-      required
-    />
+ {/* 商品名入力欄（同様に実装） */}
+<div className="mb-4">
+  <label className="block text-sm font-bold text-gray-700 mb-1">商品名</label>
+  
+  {/* ★商品名のサジェスト：historyItems（履歴）から取得 */}
+  <div className="flex gap-2 overflow-x-auto pb-2 mb-2 scrollbar-hide">
+    {Array.from(new Set(items.map(i => i.item_name))) // 履歴からユニークな商品名を作成
+      .filter(name => name.includes(formData.itemName))
+      .slice(0, 8)
+      .map(name => (
+        <button
+          key={name}
+          type="button"
+          onClick={() => setFormData({ ...formData, itemName: name })}
+          className="shrink-0 px-3 py-1 bg-gray-100 text-gray-700 border border-gray-200 rounded-full text-xs font-medium active:bg-gray-200"
+        >
+          {name}
+        </button>
+      ))}
   </div>
+
+  <input
+    type="text"
+    value={formData.itemName}
+    onChange={(e) => setFormData({ ...formData, itemName: e.target.value })}
+    className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+    placeholder="商品名を入力"
+  />
+</div>
 
   {/* 下段：単価・数量・単位（均等に3分割、かつ高さ統一） */}
   <div className="grid grid-cols-3 gap-4">
