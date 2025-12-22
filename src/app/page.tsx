@@ -6,6 +6,7 @@ import * as XLSX from 'xlsx'; // 【追加】Excelライブラリのインポー
 import { useRouter } from 'next/navigation';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { resizeImage } from '@/lib/image-utils';
+import Link from 'next/link';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -624,7 +625,7 @@ const displayUnit = newItems[0]?.unit || "BL";
 {/* 履歴セクション */}
  <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
   <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-    <h2 className="text-xl font-bold text-gray-800">仕入れ履歴</h2>
+    <h2 className="text-xl font-bold text-gray-800">直近の仕入れ履歴 (10件)</h2>
     <button
       onClick={downloadExcel}
       className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-bold transition shadow-sm"
@@ -648,7 +649,7 @@ const displayUnit = newItems[0]?.unit || "BL";
         </tr>
       </thead>
       <tbody>
-        {items.map((item) => (
+        {items.slice(0, 10).map((item) => (
           <tr key={item.id} className="hover:bg-gray-50 border-b transition">
             <td className="p-4 text-sm whitespace-nowrap">{item.purchase_date}</td>
             <td className="p-4">
@@ -673,7 +674,7 @@ const displayUnit = newItems[0]?.unit || "BL";
 
   {/* --- 2. スマホ向け: カード型表示 (md未満で表示) --- */}
   <div className="block md:hidden divide-y divide-gray-100">
-    {items.map((item) => (
+    {items.slice(0, 10).map((item) => (
       <div key={item.id} className="p-4 space-y-3">
         <div className="flex justify-between items-start">
           <span className="text-xs text-gray-400">{item.purchase_date}</span>
@@ -694,6 +695,16 @@ const displayUnit = newItems[0]?.unit || "BL";
         </div>
       </div>
     ))}
+  </div>
+  {/* 詳細ページへのリンク */}
+  <div className="p-4 bg-gray-50 border-t">
+    <Link 
+      href="/history" 
+      className="flex items-center justify-center gap-2 w-full py-3 bg-white border border-gray-200 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition shadow-sm"
+    >
+      <span>🔍</span>
+      <span>過去の履歴を条件指定して検索する</span>
+    </Link>
   </div>
 </div>
 </div>
