@@ -65,6 +65,20 @@ export default function PurchaseForm() {
     if (data) setItems(data);
   };
 
+  // Stateの追加
+const [denylist, setDenylist] = useState<string[]>([]);
+
+// 除外リストをDBから取得
+const fetchDenylist = async () => {
+  const { data, error } = await supabase
+    .from('suggestion_denylist')
+    .select('name');
+
+  if (!error && data) {
+    setDenylist(data.map(d => d.name));
+  }
+};
+
   const [existingVendors, setExistingVendors] = useState<string[]>([]);
 
 
@@ -82,7 +96,8 @@ export default function PurchaseForm() {
     // Promise.all を使うと効率的です（SE的なパフォーマンス最適化）
     await Promise.all([
       fetchItems(),        // 履歴一覧
-      fetchVendorMaster()  // 仕入れ先マスタ（名寄せ用）
+      fetchVendorMaster(),  // 仕入れ先マスタ（名寄せ用）
+      fetchDenylist()       // 除外リスト
     ]);
   };
 
@@ -182,6 +197,27 @@ const fetchVendorMaster = async () => {
       fetchItems();
     }
   };
+
+  // --- 長押しで除外リストに登録した時の処理 ---
+  const handleExclude = async (name: string) => {
+  if (confirm(`「${name}」を全ての端末の候補から除外しますか？`)) {
+    const { error } = await supabase
+      .from('suggestion_denylist')
+      .insert([{ name }]);
+
+    if (error) {
+      if (error.code === '23505') { // すでに登録済みの場合（重複エラー）
+        alert("既に除外リストに登録されています。");
+      } else {
+        alert("エラーが発生しました: " + error.message);
+      }
+      return;
+    }
+
+    // 成功したらローカルの状態も更新
+    setDenylist(prev => [...prev, name]);
+  }
+};
 
   // --- AI解析ロジック ---
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,6 +436,7 @@ const displayUnit = newItems[0]?.unit || "BL";
       {/* ★サジェストエリア：既存の existingVendors から5件表示 */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-2 scrollbar-hide">
        {existingVendors
+        .filter(v => !denylist.includes(v)) // ★ここでDBの除外リストと照合
         .filter(v => v.includes(formData.vendor)) // 入力文字でフィルタ（任意）
         .slice(0, 8) // 最大8件くらい
         .map(v => (
