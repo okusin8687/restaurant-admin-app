@@ -285,6 +285,36 @@ const displayUnit = newItems[0]?.unit || "BL";
     }
   };
 
+  const handleBulkSave = async () => {
+  setIsScanning(true); // ローディング表示として流用
+  try {
+    // Supabaseのカラム名と一致させる
+    const inserts = scannedList.map(item => ({
+      purchase_date: item.date,
+      vendor: item.vendor,
+      item_name: item.itemName,
+      price: item.price,
+      quantity: item.quantity,
+      unit: item.unit
+    }));
+
+    const { error } = await supabase
+      .from('purchase_logs')
+      .insert(inserts);
+
+    if (error) throw error;
+
+    alert(`${scannedList.length}件の登録に成功しました！`);
+    setScannedList([]); // リストを空にする
+    if (typeof fetchItems === 'function') fetchItems(); // 履歴を更新
+
+  } catch (error: any) {
+    alert("DB登録エラー: " + error.message);
+  } finally {
+    setIsScanning(false);
+  }
+};
+
   return (
       <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -478,6 +508,38 @@ const displayUnit = newItems[0]?.unit || "BL";
                     </td>
                   </tr>
                 ))}
+                {/* スキャン済みリストの表示エリア */}
+<div className="mt-6 space-y-4">
+  {scannedList.map((item) => (
+    <div key={item.id} className="p-4 border-2 border-blue-100 rounded-xl bg-blue-50">
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="font-bold text-lg text-blue-800">{item.itemName}</p>
+          <p className="text-sm text-gray-600">{item.vendor} | {item.date}</p>
+          <p className="mt-1 font-semibold">
+            {item.price.toLocaleString()}円 ({item.quantity}{item.unit})
+          </p>
+        </div>
+        <button
+          onClick={() => setScannedList(prev => prev.filter(i => i.id !== item.id))}
+          className="text-red-500 text-sm font-bold p-2"
+        >
+          削除
+        </button>
+      </div>
+    </div>
+  ))}
+</div>
+
+{/* リストがある時だけ表示される「一括登録ボタン」 */}
+{scannedList.length > 0 && (
+  <button
+    onClick={handleBulkSave}
+    className="w-full mt-4 bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition"
+  >
+    {scannedList.length}件をまとめてデータベースに登録
+  </button>
+)}
               </tbody>
             </table>
           </div>
