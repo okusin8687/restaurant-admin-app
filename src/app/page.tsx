@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx'; // 【追加】Excelライブラリのインポー
 import { useRouter } from 'next/navigation';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { resizeImage } from '@/lib/image-utils';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -158,17 +159,12 @@ export default function PurchaseForm() {
   const handleScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsScanning(true);
-    
-    try {
-      // 1. 画像をBase64に変換（Promiseをここで完結させる）
-      const base64Data = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (e) => reject(e);
-        reader.readAsDataURL(file);
-      });
+
+  try {
+    // 1. 画像をリサイズしてBase64(純粋データのみ)を取得
+    // 原寸大（数MB）が数百KBにまで軽量化されます
+    const base64Data = await resizeImage(file, 1024);
 
       // 2. Gemini APIの準備（URL直接方式）
       const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
