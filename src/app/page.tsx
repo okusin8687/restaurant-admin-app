@@ -200,7 +200,7 @@ const base64Data = base64WithHeader.includes('base64,')
           contents: [{
             parts: [
               { text: prompt },
-              { inline_data: { mime_type: "image/jpeg", data: base64Data.split(',')[1] } }
+              { inline_data: { mime_type: "image/jpeg", data: base64Data } }
             ]
           }]
         })
