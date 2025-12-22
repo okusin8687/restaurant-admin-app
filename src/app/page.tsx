@@ -219,14 +219,26 @@ export default function PurchaseForm() {
         throw new Error(`APIエラー: ${response.status} ${JSON.stringify(errorData)}`);
       }
       
-      const result = await response.json();
-      const responseText = result.candidates[0].content.parts[0].text;
+      const data = await response.json();
+      const rawText = data.candidates[0].content.parts[0].text;
       
       // 4. JSON抽出と反映
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("AIの回答からJSONが見つかりませんでした");
+      const jsonMatch = rawText.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
 
-      const data = JSON.parse(jsonMatch[0]);
+      if (!jsonMatch) {
+        console.error("Geminiの生回答:", rawText);
+        throw new Error("JSONの開始/終了記号が見つかりませんでした。");
+      }
+
+      const cleanJson = jsonMatch[0];
+      let result;
+
+      try {
+        result = JSON.parse(cleanJson);
+      } catch (e) {
+        console.error("パース失敗時の文字列:", cleanJson);
+        throw new Error("JSON形式が崩れています。再撮影してください。");
+      }
 
       const rawItems = Array.isArray(result) ? result : [result];
 
@@ -242,7 +254,7 @@ export default function PurchaseForm() {
 
       // 1. スキャン結果から「現在存在しない新しい単位」だけを抽出（重複排除）
 const newDetectedUnits = Array.from(new Set(newItems.map(item => item.unit)))
-  .filter(u => u && !units.includes(u));
+        .filter((u): u is string => !!u && !units.includes(u));
 
 // 2. 新しい単位があれば一括で追加
 if (newDetectedUnits.length > 0) {
