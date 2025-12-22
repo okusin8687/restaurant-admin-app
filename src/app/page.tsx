@@ -65,17 +65,43 @@ export default function PurchaseForm() {
     if (data) setItems(data);
   };
 
+  const [existingVendors, setExistingVendors] = useState<string[]>([]);
+
+
   useEffect(() => {
-  const checkAuth = async () => {
+  const init = async () => {
+    // 1. 認証チェック
     const { data: { session } } = await supabase.auth.getSession();
+    
     if (!session) {
-      router.push('/login'); // セッションがなければログイン画面へ
-    } else {
-      fetchItems(); // ログインしていればデータ取得
+      router.push('/login');
+      return;
     }
+
+    // 2. 認証OKなら、データと「名寄せ用マスタ」を並列で取得
+    // Promise.all を使うと効率的です（SE的なパフォーマンス最適化）
+    await Promise.all([
+      fetchItems(),        // 履歴一覧
+      fetchVendorMaster()  // 仕入れ先マスタ（名寄せ用）
+    ]);
   };
-  checkAuth();
+
+  init();
 }, []);
+
+// --- データの重複排除ロジック ---
+const fetchVendorMaster = async () => {
+  const { data, error } = await supabase
+    .from('purchase_logs')
+    .select('vendor');
+
+  if (!error && data) {
+    // 全データからユニークな名前だけを抽出
+    const uniqueVendors = Array.from(new Set(data.map(d => d.vendor).filter(Boolean)));
+    setExistingVendors(uniqueVendors);
+    console.log("仕入れ先マスタを更新しました:", uniqueVendors);
+  }
+};
 
   // --- 保存（新規作成 または 更新）処理 ---
   const handleSubmit = async (e: React.FormEvent) => {
@@ -306,6 +332,8 @@ const displayUnit = newItems[0]?.unit || "BL";
 
     alert(`${scannedList.length}件の登録に成功しました！`);
     setScannedList([]); // リストを空にする
+    // これにより「初めて登録した会社」が即座に名寄せ辞書に登録されます
+    await Promise.all([fetchItems(), fetchVendorMaster()]);
     if (typeof fetchItems === 'function') fetchItems(); // 履歴を更新
 
   } catch (error: any) {
