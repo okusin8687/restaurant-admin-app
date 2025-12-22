@@ -521,66 +521,85 @@ const displayUnit = newItems[0]?.unit || "BL";
     </button>
   </div>
 )}
-        </div>
 
-        {/* 履歴テーブル */}
-        <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
-          <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
-            <h2 className="text-xl font-bold text-gray-800">仕入れ履歴</h2>
-            
-            {/* 【追加】Excelダウンロードボタン */}
-            <button
-              onClick={downloadExcel}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-bold transition shadow-sm"
-            >
+
+{/* 履歴セクション */}
+ <div className="bg-white shadow-md rounded-xl overflow-hidden border border-gray-100">
+  <div className="p-6 bg-gray-50 border-b flex justify-between items-center">
+    <h2 className="text-xl font-bold text-gray-800">仕入れ履歴</h2>
+    <button
+      onClick={downloadExcel}
+      className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-bold transition shadow-sm"
+    >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Excel出力
             </button>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-100 text-gray-600 text-sm">
-                  <th className="p-4 border-b">日付</th>
-                  <th className="p-4 border-b">メーカー / 商品</th>
-                  <th className="p-4 border-b">単価 × 数量</th>
-                  <th className="p-4 border-b">小計</th>
-                  <th className="p-4 border-b text-center">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50 border-b transition">
-                    <td className="p-4 text-sm">{item.purchase_date}</td>
-                    <td className="p-4">
-                      <div className="font-medium">{item.vendor}</div>
-                      <div className="text-xs text-gray-500">{item.item_name}</div>
-                    </td>
-                    <td className="p-4 text-sm">
-                      ¥{item.price.toLocaleString()} × {item.quantity}{item.unit}
-                    </td>
-                    <td className="p-4 font-bold text-blue-600">¥{(item.price * item.quantity).toLocaleString()}</td>
-                    <td className="p-4">
-                      <div className="flex justify-center gap-2">
-                        <button onClick={() => startEdit(item)} className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-sm border border-blue-200">
-                          編集
-                        </button>
-                        <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-sm border border-red-200">
-                          削除
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {/* スキャン済みリストの表示エリア */}
-              </tbody>
-            </table>
+         {/* --- 1. PC向け: テーブル表示 (md以上で表示) --- */}
+  <div className="hidden md:block overflow-x-auto">
+    <table className="w-full text-left border-collapse">
+      <thead>
+        <tr className="bg-gray-100 text-gray-600 text-sm">
+          <th className="p-4 border-b">日付</th>
+          <th className="p-4 border-b">メーカー / 商品</th>
+          <th className="p-4 border-b">単価 × 数量</th>
+          <th className="p-4 border-b">小計</th>
+          <th className="p-4 border-b text-center">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {items.map((item) => (
+          <tr key={item.id} className="hover:bg-gray-50 border-b transition">
+            <td className="p-4 text-sm whitespace-nowrap">{item.purchase_date}</td>
+            <td className="p-4">
+              <div className="font-medium">{item.vendor}</div>
+              <div className="text-xs text-gray-500">{item.item_name}</div>
+            </td>
+            <td className="p-4 text-sm">
+              ¥{item.price.toLocaleString()} × {item.quantity}{item.unit}
+            </td>
+            <td className="p-4 font-bold text-blue-600">¥{(item.price * item.quantity).toLocaleString()}</td>
+            <td className="p-4">
+              <div className="flex justify-center gap-2">
+                <button onClick={() => startEdit(item)} className="text-blue-600 hover:bg-blue-50 px-2 py-1 rounded text-sm border border-blue-200">編集</button>
+                <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-sm border border-red-200">削除</button>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  {/* --- 2. スマホ向け: カード型表示 (md未満で表示) --- */}
+  <div className="block md:hidden divide-y divide-gray-100">
+    {items.map((item) => (
+      <div key={item.id} className="p-4 space-y-3">
+        <div className="flex justify-between items-start">
+          <span className="text-xs text-gray-400">{item.purchase_date}</span>
+          <span className="font-bold text-blue-600">¥{(item.price * item.quantity).toLocaleString()}</span>
+        </div>
+        <div>
+          <div className="text-xs font-bold text-blue-800 bg-blue-50 inline-block px-2 py-0.5 rounded mb-1">{item.vendor}</div>
+          <div className="text-sm font-medium text-gray-800 leading-snug">{item.item_name}</div>
+        </div>
+        <div className="flex justify-between items-center pt-2">
+          <div className="text-xs text-gray-500">
+             ¥{item.price.toLocaleString()} × {item.quantity}{item.unit}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={() => startEdit(item)} className="text-blue-600 text-sm font-bold">編集</button>
+            <button onClick={() => handleDelete(item.id)} className="text-red-500 text-sm font-bold">削除</button>
           </div>
         </div>
-
       </div>
-    </div>
+    ))}
+  </div>
+</div>
+</div>
+</div>
+</div>
   );
-}
+}   
