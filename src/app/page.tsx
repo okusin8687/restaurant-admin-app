@@ -24,6 +24,8 @@ export default function PurchaseForm() {
     quantity: 0,
     unit: 'BL',
   });
+  // 既存の formData とは別に、スキャン済みリストを用意
+  const [scannedList, setScannedList] = useState<any[]>([]);
   const router = useRouter();
 
   const downloadExcel = () => {
@@ -164,12 +166,7 @@ export default function PurchaseForm() {
   try {
     // 1. 画像をリサイズしてBase64(純粋データのみ)を取得
     // 原寸大（数MB）が数百KBにまで軽量化されます
-    const base64WithHeader = await resizeImage(file, 1200);
-
-    // 2. もし base64WithHeader に "base64," が含まれていたら、それ以降を抽出する処理を徹底
-const base64Data = base64WithHeader.includes('base64,') 
-  ? base64WithHeader.split('base64,')[1] 
-  : base64WithHeader;
+    const base64Data = await resizeImage(file, 1200);
 
       // 2. Gemini APIの準備（URL直接方式）
       const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
@@ -202,7 +199,8 @@ const base64Data = base64WithHeader.includes('base64,')
               { text: prompt },
               { inline_data: { mime_type: "image/jpeg", data: base64Data } }
             ]
-          }]
+          }],
+          generationConfig: { response_mime_type: "application/json" }
         })
       });
 
@@ -226,14 +224,24 @@ const base64Data = base64WithHeader.includes('base64,')
         setUnits(prev => [...prev, detectedUnit]);
       }
 
-      setFormData({
+      const newItem = {
+        id: crypto.randomUUID(), // 削除や編集のためのユニークキー
         date: data.date || new Date().toISOString().split('T')[0],
         vendor: data.vendor || "不明な仕入れ先",
         itemName: data.itemName || "不明な商品名",
         price: Number(data.price) || 0,
         quantity: Number(data.quantity) || 1,
         unit: detectedUnit
-      });
+      };
+
+      // リストの先頭に追加（新しいものが一番上に来るように）
+      setScannedList(prev => [newItem, ...prev]);
+
+      // フォーム側にも一応最新を表示させたいなら残してもOK（任意）
+      setFormData(newItem); 
+
+      // alert は連続スキャンの邪魔になるので、console.log かトースト表示が理想
+      console.log("スキャン完了:", newItem.itemName);
 
       alert(`スキャン完了！単位「${detectedUnit}」を認識しました。`);
 
