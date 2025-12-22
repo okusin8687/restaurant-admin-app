@@ -498,12 +498,28 @@ const displayUnit = newItems[0]?.unit || "BL";
 
 {/* リストがある時だけ表示される「一括登録ボタン」 */}
 {scannedList.length > 0 && (
-  <button
-    onClick={handleBulkSave}
-    className="w-full mt-4 bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition"
-  >
-    {scannedList.length}件をまとめてデータベースに登録
-  </button>
+  <div className="mt-8 space-y-3 w-full">
+    {/* メインの登録ボタン */}
+    <button
+      onClick={handleBulkSave}
+      className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all flex justify-center items-center gap-2 hover:bg-blue-700"
+    >
+      <span>🚀</span>
+      <span>{scannedList.length}件をまとめて登録する</span>
+    </button>
+
+    {/* キャンセルボタン（全削除） */}
+    <button
+      onClick={() => {
+        if (confirm("スキャンしたリストをすべて消去してもよろしいですか？")) {
+          setScannedList([]);
+        }
+      }}
+      className="w-full bg-white text-gray-500 py-3 rounded-2xl font-medium text-base border border-gray-200 hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all active:scale-95"
+    >
+      リストをすべてクリアしてキャンセル
+    </button>
+  </div>
 )}
         </div>
 
