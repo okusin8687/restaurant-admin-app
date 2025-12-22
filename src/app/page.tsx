@@ -164,7 +164,12 @@ export default function PurchaseForm() {
   try {
     // 1. 画像をリサイズしてBase64(純粋データのみ)を取得
     // 原寸大（数MB）が数百KBにまで軽量化されます
-    const base64Data = await resizeImage(file, 1024);
+    const base64WithHeader = await resizeImage(file, 1024);
+
+    // 2. もし base64WithHeader に "base64," が含まれていたら、それ以降を抽出する処理を徹底
+const base64Data = base64WithHeader.includes('base64,') 
+  ? base64WithHeader.split('base64,')[1] 
+  : base64WithHeader;
 
       // 2. Gemini APIの準備（URL直接方式）
       const apiKey = (process.env.NEXT_PUBLIC_GEMINI_API_KEY || "").trim();
@@ -195,7 +200,7 @@ export default function PurchaseForm() {
           contents: [{
             parts: [
               { text: prompt },
-              { inline_data: { mime_type: file.type, data: base64Data.split(',')[1] } }
+              { inline_data: { mime_type: "image/jpeg", data: base64Data.split(',')[1] } }
             ]
           }]
         })
