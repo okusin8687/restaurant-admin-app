@@ -175,17 +175,27 @@ export default function PurchaseForm() {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
       const prompt = `
-        この納品書（または領収書）の画像から情報を抽出し、純粋なJSON形式で返してください。
-        JSON以外の説明テキストは一切含めないでください。
-        {
-          "date": "YYYY-MM-DD",
-          "vendor": "仕入れ先名",
-          "itemName": "商品名",
-          "price": 0,
-          "quantity": 1,
-          "unit": "単位"
-        }
-      `;
+  この納品書から「全ての商品」を抽出し、以下のJSON形式の配列で返してください。
+  JSON以外のテキストは一切含めないでください。
+  [
+    {
+      "date": "YYYY-MM-DD",
+      "vendor": "仕入れ先名",
+      "itemName": "商品名1",
+      "price": 0,
+      "quantity": 1,
+      "unit": "単位"
+    },
+    {
+      "date": "YYYY-MM-DD",
+      "vendor": "仕入れ先名",
+      "itemName": "商品名2",
+      "price": 0,
+      "quantity": 1,
+      "unit": "単位"
+    }
+  ]
+`;
 
       // 3. fetchで直接送信
       const response = await fetch(url, {
@@ -217,38 +227,48 @@ export default function PurchaseForm() {
       if (!jsonMatch) throw new Error("AIの回答からJSONが見つかりませんでした");
 
       const data = JSON.parse(jsonMatch[0]);
-      const detectedUnit = data.unit || "BL";
 
-      // 単位の追加とフォーム反映
-      if (!units.includes(detectedUnit)) {
-        setUnits(prev => [...prev, detectedUnit]);
-      }
+      const rawItems = Array.isArray(result) ? result : [result];
 
-      const newItem = {
-        id: crypto.randomUUID(), // 削除や編集のためのユニークキー
-        date: data.date || new Date().toISOString().split('T')[0],
-        vendor: data.vendor || "不明な仕入れ先",
-        itemName: data.itemName || "不明な商品名",
-        price: Number(data.price) || 0,
-        quantity: Number(data.quantity) || 1,
-        unit: detectedUnit
-      };
+      const newItems = rawItems.map(item => ({
+        id: crypto.randomUUID(),
+        date: item.date || new Date().toISOString().split('T')[0],
+        vendor: item.vendor || "不明な仕入れ先",
+        itemName: item.itemName || "不明な商品名",
+        price: Number(item.price) || 0,
+        quantity: Number(item.quantity) || 1,
+        unit: item.unit || "個"
+      }));
+
+      // 1. スキャン結果から「現在存在しない新しい単位」だけを抽出（重複排除）
+const newDetectedUnits = Array.from(new Set(newItems.map(item => item.unit)))
+  .filter(u => u && !units.includes(u));
+
+// 2. 新しい単位があれば一括で追加
+if (newDetectedUnits.length > 0) {
+  setUnits(prev => [...prev, ...newDetectedUnits]);
+}
+
+// 3. フォーム反映（連続入力の場合は、最後にスキャンした1件目の単位を代表で表示など）
+const displayUnit = newItems[0]?.unit || "BL";
+
 
       // リストの先頭に追加（新しいものが一番上に来るように）
-      setScannedList(prev => [newItem, ...prev]);
+      setScannedList(prev => [...newItems, ...prev]);
 
       // フォーム側にも一応最新を表示させたいなら残してもOK（任意）
-      setFormData(newItem); 
+     // setFormData(newItem); 
 
-      // alert は連続スキャンの邪魔になるので、console.log かトースト表示が理想
-      console.log("スキャン完了:", newItem.itemName);
-
-      alert(`スキャン完了！単位「${detectedUnit}」を認識しました。`);
+      // --- フィードバック ---
+      // newItems[0] を参照することで、少なくとも1件目の名前をログに出せます
+      console.log(`${newItems.length}件スキャン完了:`, newItems[0]?.itemName);
+      alert(`${newItems.length}件の商品を読み取りました。`);
 
     } catch (error: any) {
       console.error("解析エラーの詳細:", error);
       alert(`解析失敗エラー：\n${error.message}`);
     } finally {
+      // tryが終わってもcatchに飛んでも、必ずスキャン中フラグを落とす
       setIsScanning(false);
     }
   };
