@@ -37,7 +37,7 @@ export const resizeImage = (file: File, maxWidth: number = 800): Promise<string>
         }
 
         // クオリティを0.7(70%)に抑えてさらに軽量化
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         // "data:image/jpeg;base64,..." の接頭辞を削除して純粋なBase64のみ返す
         resolve(dataUrl.split(',')[1]);
       };

@@ -164,7 +164,7 @@ export default function PurchaseForm() {
   try {
     // 1. 画像をリサイズしてBase64(純粋データのみ)を取得
     // 原寸大（数MB）が数百KBにまで軽量化されます
-    const base64WithHeader = await resizeImage(file, 1024);
+    const base64WithHeader = await resizeImage(file, 1200);
 
     // 2. もし base64WithHeader に "base64," が含まれていたら、それ以降を抽出する処理を徹底
 const base64Data = base64WithHeader.includes('base64,') 
