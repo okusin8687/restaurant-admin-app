@@ -1,7 +1,7 @@
 /**
  * 画像を指定した最大幅/高さにリサイズし、Base64文字列で返す
  */
-export const resizeImage = (file: File, maxWidth: number = 1024): Promise<string> => {
+export const resizeImage = (file: File, maxWidth: number = 800): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -28,11 +28,16 @@ export const resizeImage = (file: File, maxWidth: number = 1024): Promise<string
 
         canvas.width = width;
         canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
+        const ctx = canvas.getContext('2d', { alpha: false }); // アルファチャンネル無効で高速化
+        // 画像の描画品質を「低」に設定（リサイズ処理自体の高速化）
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'low'; 
+          ctx.drawImage(img, 0, 0, width, height);
+        }
 
         // クオリティを0.7(70%)に抑えてさらに軽量化
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.5);
         // "data:image/jpeg;base64,..." の接頭辞を削除して純粋なBase64のみ返す
         resolve(dataUrl.split(',')[1]);
       };
