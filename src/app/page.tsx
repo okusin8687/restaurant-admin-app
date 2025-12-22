@@ -455,6 +455,56 @@ const displayUnit = newItems[0]?.unit || "BL";
     {editingId ? '変更を保存（更新）' : '登録する'}
   </button>
 </form>
+<div className="mt-6 w-full space-y-3">
+  {scannedList.map((item) => (
+    <div 
+      key={item.id} 
+      className="w-full p-5 border-2 border-blue-100 rounded-2xl bg-white shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+    >
+      {/* 左側：商品情報（ここを flex-grow で広げる） */}
+      <div className="flex-grow w-full">
+        <div className="flex justify-between items-start">
+          <p className="font-bold text-lg text-blue-900 break-words">
+            {item.itemName}
+          </p>
+          {/* モバイルで右上に削除ボタンを配置したい場合はここ */}
+        </div>
+        
+        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-gray-600">
+          <span className="bg-gray-100 px-2 py-0.5 rounded">📅 {item.date}</span>
+          <span className="bg-gray-100 px-2 py-0.5 rounded">🏢 {item.vendor}</span>
+        </div>
+
+        <div className="mt-3 flex items-baseline gap-2">
+          <span className="text-xl font-bold text-gray-900">
+            ¥{Number(item.price).toLocaleString()}
+          </span>
+          <span className="text-gray-500 text-sm">
+            ({item.quantity}{item.unit})
+          </span>
+        </div>
+      </div>
+
+      {/* 右側：削除ボタン（モバイルでは右端、PCでは横並び） */}
+      <button
+        onClick={() => setScannedList(prev => prev.filter(i => i.id !== item.id))}
+        className="shrink-0 w-full sm:w-auto px-4 py-2 text-red-500 font-bold border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+      >
+        削除
+      </button>
+    </div>
+  ))}
+</div>
+
+{/* リストがある時だけ表示される「一括登録ボタン」 */}
+{scannedList.length > 0 && (
+  <button
+    onClick={handleBulkSave}
+    className="w-full mt-4 bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition"
+  >
+    {scannedList.length}件をまとめてデータベースに登録
+  </button>
+)}
         </div>
 
         {/* 履歴テーブル */}
@@ -509,37 +559,6 @@ const displayUnit = newItems[0]?.unit || "BL";
                   </tr>
                 ))}
                 {/* スキャン済みリストの表示エリア */}
-<div className="mt-6 space-y-4">
-  {scannedList.map((item) => (
-    <div key={item.id} className="p-4 border-2 border-blue-100 rounded-xl bg-blue-50">
-      <div className="flex justify-between items-start">
-        <div>
-          <p className="font-bold text-lg text-blue-800">{item.itemName}</p>
-          <p className="text-sm text-gray-600">{item.vendor} | {item.date}</p>
-          <p className="mt-1 font-semibold">
-            {item.price.toLocaleString()}円 ({item.quantity}{item.unit})
-          </p>
-        </div>
-        <button
-          onClick={() => setScannedList(prev => prev.filter(i => i.id !== item.id))}
-          className="text-red-500 text-sm font-bold p-2"
-        >
-          削除
-        </button>
-      </div>
-    </div>
-  ))}
-</div>
-
-{/* リストがある時だけ表示される「一括登録ボタン」 */}
-{scannedList.length > 0 && (
-  <button
-    onClick={handleBulkSave}
-    className="w-full mt-4 bg-green-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition"
-  >
-    {scannedList.length}件をまとめてデータベースに登録
-  </button>
-)}
               </tbody>
             </table>
           </div>
