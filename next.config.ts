@@ -10,8 +10,11 @@ const withPWA = withPWAInit({
 });
 
 const nextConfig: NextConfig = {
-  /* config options here */
   reactCompiler: true,
+  // Turbopack のエラーを回避するための設定を追加
+  webpack: (config, { isServer }) => {
+    return config;
+  },
 };
 
 export default withPWA(nextConfig);
