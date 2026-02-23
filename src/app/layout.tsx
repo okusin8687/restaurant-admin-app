@@ -36,3 +36,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
+
+export const metadata = {
+  title: "レストラン管理",
+  description: "納品書スキャンアプリ",
+  manifest: "/manifest.json", // これが重要！
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "レストラン管理",
+  },
+};
