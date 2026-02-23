@@ -41,6 +41,9 @@ export const metadata = {
   title: "レストラン管理",
   description: "納品書スキャンアプリ",
   manifest: "/manifest.json", // これが重要！
+  icons: {
+    apple: "/icon-192x192.png", // これを追記
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
